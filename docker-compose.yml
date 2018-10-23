@@ -1,0 +1,32 @@
+version: '2'
+
+services:
+    php:
+        build:
+            context: ${DOCKER_PHP_PATH}
+            dockerfile: Dockerfile
+        ports:
+            - 9000:9000
+        volumes:
+            - ${PROJECT_PATH}:/var/www/project
+        links:
+            - memcached:cache
+        depends_on:
+            - memcached
+        environment:
+            - XDEBUG_CONFIG=remote_host=${XDEBUG_HOST}
+            - PHP_IDE_CONFIG=serverName=task
+        env_file:
+            - app/.app.env
+    nginx:
+        build:
+            context: ${DOCKER_NGINX_PATH}
+            dockerfile: Dockerfile
+        ports:
+            - 80:80
+        volumes_from:
+            - php
+        depends_on:
+            - php
+    memcached:
+        image: memcached:1.5
