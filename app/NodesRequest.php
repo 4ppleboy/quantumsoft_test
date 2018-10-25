@@ -69,13 +69,6 @@ class NodesRequest
     {
         $sequence = DB::preparePath($this->path);
 
-        /*      Violates the rule of queries the database
-                $data = json_decode(file_get_contents('php://input'), true);
-
-                $this->db->goto($this->path, function (&$state) use ($data) {
-                    $state['name'] = $data['name'];
-                });
-        */
         echo json_encode($sequence);
     }
 
