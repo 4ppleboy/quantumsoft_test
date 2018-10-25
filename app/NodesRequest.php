@@ -7,7 +7,7 @@ class NodesRequest
     private $db;
     private $path;
 
-    public function __construct(DB $db, $path=null)
+    public function __construct(DB $db, $path = null)
     {
         $this->db = $db;
         if (null !== $path) {
@@ -29,16 +29,19 @@ class NodesRequest
         foreach ($sequence as $iterator => $path_index) {
             if ('nested' !== $path_index) {
                 for ($i = 0; $i <= $path_index; $i++) {
-                    $path = array_fill(0, $nested_level, 0);
-                    $path[$nested_level] = (int)$i;
-                    $path[$last_path['level']] = $last_path['path'];
+                    $reproduced_path = array_fill(0, $nested_level, 0);
+                    $reproduced_path[$nested_level] = (int)$i;
+                    $reproduced_path[$last_path['level']] = $last_path['path'];
 
                     $aux[$i] = [
                         'name' => 'tmp',
-                        'path' => $path,
+                        'path' => $reproduced_path,
                     ];
                     if ($sequence_length === $iterator + 1 && $i === (int)$path_index && isset($node['name'])) {
                         $aux[$i]['name'] = $node['name'];
+                        if ($node['is_deleted']) {
+                            $aux[$i]['is_deleted'] = $node['is_deleted'];
+                        }
                     }
                 }
                 $last_path = ['level' => $nested_level, 'path' => (int)$path_index];
@@ -57,25 +60,62 @@ class NodesRequest
 
         $cache =& $data['cache'];
         $node =& $data['node'];
-        $state = $this->merge_tree($cache, $node);
+        $this->merge_tree($cache, $node);
 
-        echo json_encode($state);
+        echo json_encode($cache);
     }
 
     public function rename(): void
     {
         $sequence = DB::preparePath($this->path);
 
-        $data = json_decode(file_get_contents('php://input'), true);
+        /*      Violates the rule of queries the database
+                $data = json_decode(file_get_contents('php://input'), true);
 
-        $this->db->goto($this->path, function (&$state) use ($data) {
-            $state['name'] = $data['name'];
-        });
+                $this->db->goto($this->path, function (&$state) use ($data) {
+                    $state['name'] = $data['name'];
+                });
+        */
+        echo json_encode($sequence);
+    }
+
+    public function delete(): void
+    {
+        $sequence = DB::preparePath($this->path);
 
         echo json_encode($sequence);
     }
 
-    private function merge_tree(&$cache, $node)
+    public function create(): void
+    {
+        $sequence = DB::preparePath($this->path);
+        http_response_code(201);
+
+        echo json_encode($sequence);
+    }
+
+    public function saveTree()
+    {
+        $data = json_decode(file_get_contents('php://input'), true);
+
+        $db_tree = $this->db->getData();
+        $this->merge_tree($db_tree, $data['cache']);
+
+        $this->db->saveTree($db_tree);
+    }
+
+    public function resetTree()
+    {
+        $this->db->fallback();
+    }
+
+    /**
+     * Update cache state by merge with some one node
+     *
+     * @param $cache
+     * @param $node
+     */
+    private function merge_tree(&$cache, $node): void
     {
         foreach ($node as $index => $value) {
             if ($cache[$index] !== $value) {
@@ -86,7 +126,5 @@ class NodesRequest
                 }
             }
         }
-
-        return $cache;
     }
 }

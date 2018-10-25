@@ -4,51 +4,59 @@ namespace App;
 
 class DB
 {
-    public $data;
+    protected $data;
+
+    private $state_path;
 
     public function __construct()
     {
-        //Результат выборки из некой базы со сформированными путями к каждому элементу
-        $this->data = [
-            0 => [
-                'name' => 'node1',
-                'path' => [0],
-                'nested' => [
-                    0 => [
-                        'name' => 'node2',
-                        'path' => [0, 0],
-                        'nested' => []
-                    ],
-                    1 => [
-                        'name' => 'node3',
-                        'path' => [0, 1],
-                        'nested' => [
-                            0 => [
-                                'name' => 'node4',
-                                'path' => [0, 1, 0],
-                                'nested' => []
-                            ],
-                            1 => [
-                                'name' => 'node5',
-                                'path' => [0, 1, 1],
-                                'nested' => []
+        $this->state_path = __DIR__ . '/state/';
+
+        if (file_exists($this->state_path . 'accepted')) {
+            $this->data = json_decode(file_get_contents($this->state_path . 'accepted'), true);
+        } else {
+            //Результат выборки из некой базы со сформированными путями к каждому элементу
+            $this->data = [
+                0 => [
+                    'name' => 'node1',
+                    'path' => [0],
+                    'nested' => [
+                        0 => [
+                            'name' => 'node2',
+                            'path' => [0, 0],
+                            'nested' => []
+                        ],
+                        1 => [
+                            'name' => 'node3',
+                            'path' => [0, 1],
+                            'nested' => [
+                                0 => [
+                                    'name' => 'node4',
+                                    'path' => [0, 1, 0],
+                                    'nested' => []
+                                ],
+                                1 => [
+                                    'name' => 'node5',
+                                    'path' => [0, 1, 1],
+                                    'nested' => []
+                                ]
                             ]
-                        ]
-                    ],
-                    2 => [
-                        'name' => 'node6',
-                        'path' => [0, 2],
-                        'nested' => [
-                            0 => [
-                                'name' => 'node7',
-                                'path' => [0, 2, 0],
-                                'nested' => []
+                        ],
+                        2 => [
+                            'name' => 'node6',
+                            'path' => [0, 2],
+                            'nested' => [
+                                0 => [
+                                    'name' => 'node7',
+                                    'path' => [0, 2, 0],
+                                    'nested' => []
+                                ]
                             ]
-                        ]
-                    ],
+                        ],
+                    ]
                 ]
-            ]
-        ];
+            ];
+        }
     }
 
     public function getData(): array
@@ -71,7 +79,8 @@ class DB
             if ($sequence_length === $iterator + 1 && isset($aux['name'], $aux['path'])) {
                 $node = [
                     'name' => $aux['name'],
-                    'path' => $aux['path']
+                    'path' => $aux['path'],
+                    'is_deleted' => $aux['is_deleted']
                 ];
             }
         }
@@ -92,6 +101,16 @@ class DB
         }
 
         $closure($aux);
+    }
+
+    public function saveTree($cache)
+    {
+        file_put_contents($this->state_path . 'accepted', json_encode($cache));
+    }
+
+    public function fallback()
+    {
+        unlink($this->state_path . 'accepted');
     }
 
     public static function preparePath(string $path): array
