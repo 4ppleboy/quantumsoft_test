@@ -2,14 +2,14 @@
 
 namespace App;
 
-class MainPage
+class Page
 {
-    private $view = 'main';
+    private $view = 'page.html';
     private $tree;
 
-    public function __construct(DB $db)
+    public function __construct(array $tree)
     {
-        $this->tree = $db->getData();
+        $this->tree = $tree;
     }
 
     public function build(): void
@@ -24,7 +24,7 @@ class MainPage
 
     public function render(string $template_name, array $vars = []): void
     {
-        $template_file = __DIR__ . "/view/{$template_name}.html";
+        $template_file = __DIR__ . "/view/{$template_name}";
         if (!file_exists($template_file)) {
             throw new \RuntimeException('Template does not exist');
         }

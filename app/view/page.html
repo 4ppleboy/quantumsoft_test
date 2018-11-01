@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>%name%</title>
+    <style>
+        li {
+            padding-right: 1em;
+        }
+
+        #db li > span:hover {
+            background-color: #20c997;
+            cursor: pointer;
+        }
+
+        #cache li > span:hover {
+            background-color: #1c7430;
+            cursor: pointer;
+        }
+
+        li[data-is_deleted='true'] {
+            background-color: red;
+        }
+
+        .border {
+            border: 1px solid black;
+        }
+
+        .block {
+            display: inline-block;
+            margin-right: 20px;
+            min-height: 100px;
+            float: left;
+        }
+
+        .block:after {
+            clear: both;
+        }
+
+        label {
+            border-bottom: 1px solid black;
+            display: block;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="block border">
+    <label for="cache">cache</label>
+    <div id="cache"></div>
+</div>
+
+<div class="block">
+    <button type="button" onclick="getNode();"><<<</button>
+    <button type="button" onclick="createNode();">+</button>
+    <button type="button" onclick="deleteNode();">-</button>
+    <button type="button" onclick="renameNode();">cache rename</button>
+    <button type="button" onclick="saveChanges();">accept</button>
+    <button type="button" onclick="resetDatabase();">reset</button>
+</div>
+
+<div class="block border">
+    <label for="db">db</label>
+    <div id="db"></div>
+</div>
+
+
+<script type="application/javascript">
+    let db_tree = '%db_tree%';
+    let cache_tree = null;
+    let db_tree_selected_id = null;
+    let cache_tree_marked_id = null;
+
+    function selectNode(node) {
+        db_tree_selected_id = node.parentNode.getAttribute('data-id');
+    }
+
+    function markNode(node) {
+        cache_tree_marked_id = node.parentNode.getAttribute('data-id');
+    }
+
+    function renderTree(tree, type) {
+        let i, ul = document.createElement('ul'), li;
+        for (i in tree) {
+            li = ul.appendChild(document.createElement('li'));
+            if (typeof tree[i]['is_deleted'] !== "undefined") {
+                li.setAttribute('data-is_deleted', tree[i]['is_deleted']);
+            }
+            if (type === 'db') {
+                li.innerHTML = '<span onclick="selectNode(this)">' + tree[i]['name'] + '</span>';
+            } else if (type === 'cache') {
+                li.innerHTML = '<span onclick="markNode(this)" contenteditable="true">' + tree[i]['name'] + '</span>';
+            }
+            li.setAttribute('data-id', tree[i]['id']);
+
+            if (typeof tree[i]['nested'] === 'object') {
+                li.appendChild(renderTree(tree[i]['nested'], type));
+            }
+        }
+        return ul;
+    }
+
+    document.getElementById('db').appendChild(
+        renderTree(JSON.parse(db_tree), 'db')
+    );
+
+    function updateTree(cache, node) {
+        for (let index in node) {
+            if (typeof cache[index] === 'undefined') {
+                cache[index] = node[index];
+
+                continue;
+            }
+            if (cache[index] !== node[index]) {
+                if (typeof node[index] === 'array' || typeof node[index] === 'object') {
+                    updateTree(cache[index], node[index]);
+                } else if (node[index] !== 'unknown') {
+                    cache[index] = node[index];
+                }
+            }
+        }
+    }
+
+    function goto(sequence, closure) {
+        let aux = cache_tree, idx;
+        for (idx of sequence) {
+            if (typeof aux[idx] !== 'undefined') {
+                aux = aux[idx];
+            } else {
+                return null;
+            }
+        }
+
+        closure(aux);
+    }
+
+    function renameNode() {
+        if (!cache_tree_marked_id) {
+            return;
+        }
+
+        let node = document.getElementById('cache').querySelector('[data-id="' + cache_tree_marked_id + '"]');
+        let name = node.firstChild.textContent;
+
+        let sequence = findPathTo(cache_tree_marked_id, cache_tree);
+
+        goto(sequence, function (node) {
+            node['name'] = name;
+        });
+
+        cache_tree_marked_id = null;
+    }
+
+    function findPathTo(id, haystack, path = []) {
+        for (let index in haystack) {
+            if (typeof haystack[index] === 'object' || typeof haystack[index] === 'array') {
+                path.push(index);
+                if (findPathTo(id, haystack[index], path)) {
+                    return path;
+                }
+
+                path.pop();
+            } else if (haystack[index] == id) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    function createNode() {
+        if (!cache_tree_marked_id) {
+            return;
+        }
+
+        let path = findPathTo(cache_tree_marked_id, cache_tree);
+        if (false === path) {
+            alert('Прежде чем добавлять раздел, необходимо подгрузить ноду');
+
+            return;
+        }
+        goto(path, function (node) {
+            if (typeof node['nested'] !== 'undefined') {
+                let firstKey = Object.keys(node['nested'])[0];
+                let newIndex = parseInt(Object.keys(node['nested']).pop()) + 1;
+
+                let clone_node = JSON.parse(JSON.stringify(node['nested'][firstKey]));
+                clone_node['name'] = 'new';
+                clone_node['id'] = 'generate';
+                delete clone_node['nested'];
+
+                node['nested'][newIndex] = clone_node;
+
+                document.getElementById('cache').replaceChild(
+                    renderTree(cache_tree, 'cache'),
+                    document.getElementById('cache').firstChild
+                );
+            } else {
+                alert('Нода не имеет вложений, в ней нельзя добавить раздел')
+            }
+        });
+
+        cache_tree_marked_id = null;
+    }
+
+    function deleteNode() {
+        if (!cache_tree_marked_id) {
+            return;
+        }
+
+        let path = findPathTo(cache_tree_marked_id, cache_tree);
+        if (false === path) {
+            alert('Прежде чем удалить ноду, её необходимо подгрузить');
+
+            return;
+        }
+        goto(path, function (node) {
+            node['is_deleted'] = true;
+            document.getElementById('cache')
+                .querySelector('[data-id="' + node['id'] + '"]')
+                .setAttribute('data-is_deleted', true);
+        });
+
+        cache_tree_marked_id = null;
+    }
+
+    function getNode() {
+        if (!db_tree_selected_id) {
+            return;
+        }
+        let req = new XMLHttpRequest();
+        let uri = 'db/node/?id=' + db_tree_selected_id;
+        let method = 'get';
+        req.open(method, uri, true);
+        req.withCredentials = false;
+        req.setRequestHeader('Content-type', 'application/json; charset=utf-8');
+        req.onreadystatechange = function () {
+            if (4 !== req.readyState) {
+                return;
+            }
+            if (200 === req.status) {
+                let node = JSON.parse(req.response);
+                if (null === cache_tree) {
+                    document.getElementById('cache').appendChild(
+                        renderTree(node, 'cache')
+                    );
+                    cache_tree = node;
+                } else {
+                    updateTree(cache_tree, node);
+                    document.getElementById('cache').replaceChild(
+                        renderTree(cache_tree, 'cache'),
+                        document.getElementById('cache').firstChild
+                    );
+                }
+            } else {
+                alert('Ошибка рендеринга ноды');
+            }
+        };
+        req.send();
+
+        db_tree_selected_id = null;
+    }
+
+    function saveChanges() {
+        if (!cache_tree) {
+            return;
+        }
+        let req = new XMLHttpRequest();
+        let uri = 'db/save';
+        let method = 'put';
+        req.open(method, uri, true);
+        req.withCredentials = false;
+        req.setRequestHeader('Content-type', 'application/json; charset=utf-8');
+        req.onreadystatechange = function () {
+            if (4 !== req.readyState) {
+                return;
+            }
+            if (200 === req.status) {
+                document.getElementById('db').replaceChild(
+                    renderTree(JSON.parse(req.response), 'db'),
+                    document.getElementById('db').firstChild
+                );
+
+            } else {
+                alert('Ошибка сохранения');
+            }
+        };
+        let data = {};
+        data.cache = cache_tree;
+        req.send(JSON.stringify(data));
+    }
+
+    function resetDatabase() {
+        let req = new XMLHttpRequest();
+        let uri = 'db/reset';
+        let method = 'put';
+        req.open(method, uri, true);
+        req.withCredentials = false;
+        req.onreadystatechange = function () {
+            if (4 !== req.readyState) {
+                return;
+            }
+            if (204 === req.status) {
+                document.location.href = document.location.pathname;
+            } else {
+                alert('Ошибка сброса состояния БД');
+            }
+        };
+        req.send();
+    }
+</script>
+
+</body>
+</html>
