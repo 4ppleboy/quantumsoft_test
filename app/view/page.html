@@ -71,6 +71,7 @@
     let cache_tree = null;
     let db_tree_selected_id = null;
     let cache_tree_marked_id = null;
+    let cache_index = [];
 
     function selectNode(node) {
         db_tree_selected_id = node.parentNode.getAttribute('data-id');
@@ -105,20 +106,38 @@
         renderTree(JSON.parse(db_tree), 'db')
     );
 
-    function updateTree(cache, node) {
-        for (let index in node) {
-            if (typeof cache[index] === 'undefined') {
-                cache[index] = node[index];
+    function rebuildTree(tree) {
+        let newTree = [];
+        for (let i in cache_index) {
+            let path = findPathTo(cache_index[i]['id'], tree);
+            if (null !== path) {
+                let node = null;
+                goto(path, function (item) {
 
-                continue;
-            }
-            if (cache[index] !== node[index]) {
-                if (typeof node[index] === 'array' || typeof node[index] === 'object') {
-                    updateTree(cache[index], node[index]);
-                } else if (node[index] !== 'unknown') {
-                    cache[index] = node[index];
+                    node = item;
+                });
+                if (null !== node) {
+                    updateTree(newTree, node);
                 }
             }
+        }
+
+        return newTree;
+    }
+
+    function updateTree(tree, node) {
+        let path = findPathTo(node['parent_id'], tree);
+        if (false !== path) {
+            goto(path, function (item) {
+                if (typeof item['nested'] === 'undefined') {
+                    item['nested'] = [];
+                    item['nested'][node['id']] = node;
+                } else if (item['nested'] !== 'undefined' && typeof item['nested'][node['id']] === 'undefined') {
+                    item['nested'][node['id']] = node;
+                }
+            });
+        } else {
+            tree[node['id']] = node;
         }
     }
 
@@ -161,7 +180,7 @@
                 }
 
                 path.pop();
-            } else if (haystack[index] == id) {
+            } else if (index === 'id' && haystack[index] == id) {
                 return true;
             }
         }
@@ -241,13 +260,27 @@
             }
             if (200 === req.status) {
                 let node = JSON.parse(req.response);
+
+                cache_index.push({
+                    'id': node['id'],
+                    'parent_id': node['parent_id']
+                });
+                cache_index.sort(function (a, b) {
+                    return a.parent_id - b.parent_id;
+                });
+
                 if (null === cache_tree) {
+                    if (null === cache_tree) {
+                        cache_tree = [];
+                    }
+                    cache_tree[node['id']] = node;
+
                     document.getElementById('cache').appendChild(
-                        renderTree(node, 'cache')
+                        renderTree(cache_tree, 'cache')
                     );
-                    cache_tree = node;
                 } else {
                     updateTree(cache_tree, node);
+                    cache_tree = rebuildTree(cache_tree);
                     document.getElementById('cache').replaceChild(
                         renderTree(cache_tree, 'cache'),
                         document.getElementById('cache').firstChild
@@ -288,7 +321,9 @@
         };
         let data = {};
         data.cache = cache_tree;
-        req.send(JSON.stringify(data));
+        req.send(JSON.stringify(
+            data,
+        ));
     }
 
     function resetDatabase() {

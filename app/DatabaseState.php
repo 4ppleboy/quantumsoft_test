@@ -40,7 +40,6 @@ class DatabaseState
 
     public function getNode(array $sequence): ?array
     {
-        $node = null;
         $sequence_length = \count($sequence);
         $aux =& $this->state;
         foreach ($sequence as $iterator => $index) {
@@ -50,18 +49,11 @@ class DatabaseState
                 return null;
             }
             if ($sequence_length === $iterator + 1 && isset($aux['id'], $aux['name'])) {
-                $node = [
-                    'id' => $aux['id'],
-                    'name' => $aux['name'],
-                    'path' => $sequence,
-                ];
-                if (isset($aux['is_deleted'])) {
-                    $node['is_deleted'] = $aux['is_deleted'];
-                }
+                return $aux;
             }
         }
 
-        return $node;
+        return null;
     }
 
     public function merge(array $updates, array &$state = null): void

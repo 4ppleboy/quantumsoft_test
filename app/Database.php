@@ -17,32 +17,39 @@ class Database
             0 => [
                 'id' => 1,
                 'name' => 'node1',
+                'parent_id' => null,
                 'nested' => [
                     0 => [
                         'id' => 2,
                         'name' => 'node2',
+                        'parent_id' => 1,
                     ],
                     1 => [
                         'id' => 3,
                         'name' => 'node3',
+                        'parent_id' => 1,
                         'nested' => [
                             0 => [
                                 'id' => 5,
                                 'name' => 'node4',
+                                'parent_id' => 3,
                             ],
                             1 => [
                                 'id' => 6,
                                 'name' => 'node5',
+                                'parent_id' => 3,
                             ]
                         ]
                     ],
                     2 => [
                         'id' => 4,
                         'name' => 'node6',
+                        'parent_id' => 1,
                         'nested' => [
                             0 => [
                                 'id' => 7,
                                 'name' => 'node7',
+                                'parent_id' => 4,
                             ]
                         ]
                     ],

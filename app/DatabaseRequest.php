@@ -32,28 +32,12 @@ class DatabaseRequest
             http_response_code(404);
         }
 
-        $sequence_length = \count($sequence);
-        $aux =& $node['path'];
-        foreach ($sequence as $iterator => $step_in) {
-            if (is_numeric($step_in)) {
-                $aux[$step_in] = [
-                    'name' => 'unknown',
-                ];
-                if ($sequence_length === $iterator + 1 && isset($node['id'], $node['name'])) {
-                    $aux[$step_in] = [
-                        'name' => $node['name'],
-                        'id' => $node['id']
-                    ];
-                    if (isset($node['is_deleted'])) {
-                        $aux[$step_in]['is_deleted'] = $node['is_deleted'];
-                    }
-                }
-            }
-            unset($node['path'][$iterator + 1]);
-            $aux =& $aux[$step_in];
-        }
-
-        echo json_encode($node['path']);
+        echo json_encode([
+            'id' => $node['id'],
+            'name' => $node['name'],
+            'is_deleted' => $node['is_deleted'] ?? false,
+            'parent_id' => $node['parent_id'] ?? null,
+        ]);
     }
 
     public function save(): void
