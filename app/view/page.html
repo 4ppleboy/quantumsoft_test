@@ -308,6 +308,19 @@
                 return;
             }
             if (200 === req.status) {
+                //new nodes mark as saved
+                let new_nodes = document.getElementById('cache').querySelectorAll('[data-id="generate"]');
+                let node;
+                for (let i = 0; node = new_nodes[i]; i++) {
+                    node.setAttribute('data-id', 'saved');
+                    let path = findPathTo('generate', cache_tree);
+                    if (path !== false) {
+                        goto(path,function(node){
+                            node['id'] = 'saved';
+                        })
+                    }
+                }
+
                 document.getElementById('db').replaceChild(
                     renderTree(JSON.parse(req.response), 'db'),
                     document.getElementById('db').firstChild
