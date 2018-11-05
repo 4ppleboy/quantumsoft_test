@@ -56,38 +56,46 @@ class DatabaseState
         return null;
     }
 
-    public function merge(array $updates, array &$state = null): void
+    public function goto(array $sequence, \Closure $closure)
     {
-        if ($state === null) {
-            $state =& $this->state;
+        $aux =& $this->state;
+        foreach ($sequence as $index) {
+            if (isset($aux[$index])) {
+                $aux =& $aux[$index];
+            } else {
+                return null;
+            }
         }
 
-        foreach ($updates as $index => $value) {
-            if (!isset($state[$index])) {
-                if (\is_array($value)) {
-                    array_walk_recursive($value, function (&$item, $key) {
-                        if ($key === 'id' && $item === 'generate') {
-                            $id = $this->getMaxId() + 1;
-                            $item = $id;
-                        }
+        $closure($aux);
+    }
+
+    public function merge(array $updates): void
+    {
+        foreach ($updates as $value) {
+            if ($value['id'] === 'generate') {
+                $id = $this->getMaxId() + 1;
+                if (false !== $path = $this->findPathTo($value['parent_id'])) {
+                    $this->goto($path, function (&$node) use ($value, $id) {
+                        $node['nested'][] = [
+                            'id' => $id,
+                            'name' => $value['name'],
+                            'is_deleted' => $value['is_deleted'],
+                            'parent_id' => $value['parent_id'],
+                        ];
                     });
                 }
-                $state[$index] = $value;
-
+            } else if ($value['id'] === 'saved') {
                 continue;
-            }
+            } else if (false !== $path = $this->findPathTo($value['id'])) {
+                $this->goto($path, function (&$node) use ($value) {
+                    $node['name'] = $value['name'];
+                    $node['is_deleted'] = $value['is_deleted'];
 
-            if ($state[$index] !== $value) {
-                if (\is_array($value)) {
-                    $this->merge($value, $state[$index]);
-                } else if ($value !== 'unknown') {
-                    if ($index === 'id' && $value === 'generate') {
-                        $id = $this->getMaxId() + 1;
-                        $state[$index] = $id;
-                    } else {
-                        $state[$index] = $value;
+                    if (isset($value['nested']) && \is_array($value['nested'])) {
+                        $this->merge($value['nested']);
                     }
-                }
+                });
             }
         }
     }
