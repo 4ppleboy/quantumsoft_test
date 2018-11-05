@@ -332,14 +332,7 @@
         req.open(method, uri, true);
         req.withCredentials = false;
         req.onreadystatechange = function () {
-            if (4 !== req.readyState) {
-                return;
-            }
-            if (204 === req.status) {
-                document.location.href = document.location.pathname;
-            } else {
-                alert('Ошибка сброса состояния БД');
-            }
+            document.location.href = document.location.pathname;
         };
         req.send();
     }
