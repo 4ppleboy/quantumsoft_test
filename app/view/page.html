@@ -22,6 +22,11 @@
             background-color: red;
         }
 
+        li[data-id='saved'] {
+            background-color: lightgrey;
+            color: whitesmoke;
+        }
+
         .border {
             border: 1px solid black;
         }
@@ -161,11 +166,16 @@
         let node = document.getElementById('cache').querySelector('[data-id="' + cache_tree_marked_id + '"]');
         let name = node.firstChild.textContent;
 
-        let sequence = findPathTo(cache_tree_marked_id, cache_tree);
-
-        goto(sequence, function (node) {
-            node['name'] = name;
-        });
+        let path = findPathTo(cache_tree_marked_id, cache_tree);
+        if (false !== path) {
+            goto(path, function (node) {
+                if (node['id'] !== 'saved') {
+                    node['name'] = name;
+                }else{
+                    alert('Сохраните и перезагрузите ноду, чтобы переименовать')
+                }
+            });
+        }
 
         cache_tree_marked_id = null;
     }
@@ -210,14 +220,22 @@
                 delete clone_node['nested'];
 
                 node['nested'][newIndex] = clone_node;
-
-                document.getElementById('cache').replaceChild(
-                    renderTree(cache_tree, 'cache'),
-                    document.getElementById('cache').firstChild
-                );
+            } else if (node['id'] !== 'generate' && node['id'] !== 'saved') {
+                node['nested'] = {0: null};
+                node['nested'][0] = {
+                    'id': 'generate',
+                    'name': 'new',
+                    'parent_id': node['id'],
+                    'is_deleted': false
+                }
             } else {
-                alert('Нода не имеет вложений, в ней нельзя добавить раздел')
+                alert('Сохраните и перезагрузите ноду, чтобы создать в ней новую')
             }
+
+            document.getElementById('cache').replaceChild(
+                renderTree(cache_tree, 'cache'),
+                document.getElementById('cache').firstChild
+            );
         });
 
         cache_tree_marked_id = null;
@@ -315,7 +333,7 @@
                     node.setAttribute('data-id', 'saved');
                     let path = findPathTo('generate', cache_tree);
                     if (path !== false) {
-                        goto(path,function(node){
+                        goto(path, function (node) {
                             node['id'] = 'saved';
                         })
                     }
@@ -332,7 +350,7 @@
         };
         let data = {};
         data.cache = cache_tree;
-        console.log(JSON.stringify(cache_tree));
+
         req.send(JSON.stringify(
             data,
         ));
