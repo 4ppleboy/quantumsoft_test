@@ -107,22 +107,21 @@
     );
 
     function rebuildTree(tree) {
-        let newTree = [];
+        let new_tree = {};
         for (let i in cache_index) {
             let path = findPathTo(cache_index[i]['id'], tree);
             if (null !== path) {
                 let node = null;
                 goto(path, function (item) {
-
                     node = item;
                 });
                 if (null !== node) {
-                    updateTree(newTree, node);
+                    updateTree(new_tree, node);
                 }
             }
         }
 
-        return newTree;
+        return new_tree;
     }
 
     function updateTree(tree, node) {
@@ -130,7 +129,7 @@
         if (false !== path) {
             goto(path, function (item) {
                 if (typeof item['nested'] === 'undefined') {
-                    item['nested'] = [];
+                    item['nested'] = {};
                     item['nested'][node['id']] = node;
                 } else if (item['nested'] !== 'undefined' && typeof item['nested'][node['id']] === 'undefined') {
                     item['nested'][node['id']] = node;
@@ -270,9 +269,7 @@
                 });
 
                 if (null === cache_tree) {
-                    if (null === cache_tree) {
-                        cache_tree = [];
-                    }
+                    cache_tree = {};
                     cache_tree[node['id']] = node;
 
                     document.getElementById('cache').appendChild(
@@ -321,6 +318,7 @@
         };
         let data = {};
         data.cache = cache_tree;
+        console.log(JSON.stringify(cache_tree));
         req.send(JSON.stringify(
             data,
         ));
