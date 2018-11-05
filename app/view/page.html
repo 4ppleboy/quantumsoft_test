@@ -206,6 +206,7 @@
                 let clone_node = JSON.parse(JSON.stringify(node['nested'][firstKey]));
                 clone_node['name'] = 'new';
                 clone_node['id'] = 'generate';
+                clone_node['is_deleted'] = false;
                 delete clone_node['nested'];
 
                 node['nested'][newIndex] = clone_node;
