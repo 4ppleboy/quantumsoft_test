@@ -98,6 +98,6 @@ class Database
 
     public function fallback(): void
     {
-        unlink($this->state_path . $this->state_file);
+        @unlink($this->state_path . $this->state_file);
     }
 }

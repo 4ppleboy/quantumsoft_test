@@ -4,6 +4,9 @@ namespace App;
 
 class DatabaseRequest
 {
+    /**
+     * @var Database
+     */
     private $database;
     private $databaseState;
 
@@ -49,7 +52,7 @@ class DatabaseRequest
         $this->database->apply($state);
 
         http_response_code(200);
-        echo json_encode($state);
+        echo json_encode(['db_tree' => $state, 'created' => $this->databaseState->getCreated()]);
     }
 
     public function fallback(): void

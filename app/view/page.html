@@ -22,11 +22,6 @@
             background-color: red;
         }
 
-        li[data-id='saved'] {
-            background-color: lightgrey;
-            color: whitesmoke;
-        }
-
         .border {
             border: 1px solid black;
         }
@@ -77,6 +72,9 @@
     let db_tree_selected_id = null;
     let cache_tree_marked_id = null;
     let cache_index = [];
+    let cache_tmp_id = 0;
+    const prefix_tmp_id = 'generate';
+
 
     function selectNode(node) {
         db_tree_selected_id = node.parentNode.getAttribute('data-id');
@@ -169,10 +167,16 @@
         let path = findPathTo(cache_tree_marked_id, cache_tree);
         if (false !== path) {
             goto(path, function (node) {
-                if (node['id'] !== 'saved') {
+                if (node['is_deleted']) {
+                    alert('Нельзя редактировать удалённую ноду, изменения не сохранятся');
+
+                    return;
+                }
+
+                if (!isTmpNodeId(node['id'])) {
                     node['name'] = name;
-                }else{
-                    alert('Сохраните и перезагрузите ноду, чтобы переименовать')
+                } else {
+                    alert('Сохраните и перезагрузите ноду, чтобы переименовать');
                 }
             });
         }
@@ -209,27 +213,31 @@
             return;
         }
         goto(path, function (node) {
+            if (node['is_deleted']) {
+                alert('Нельзя редактировать удалённую ноду, изменения не сохранятся');
+
+                return;
+            }
+
             if (typeof node['nested'] !== 'undefined') {
                 let firstKey = Object.keys(node['nested'])[0];
                 let newIndex = parseInt(Object.keys(node['nested']).pop()) + 1;
 
                 let clone_node = JSON.parse(JSON.stringify(node['nested'][firstKey]));
                 clone_node['name'] = 'new';
-                clone_node['id'] = 'generate';
+                clone_node['id'] = getTmpNodeId();
                 clone_node['is_deleted'] = false;
                 delete clone_node['nested'];
 
                 node['nested'][newIndex] = clone_node;
-            } else if (node['id'] !== 'generate' && node['id'] !== 'saved') {
+            } else{
                 node['nested'] = {0: null};
                 node['nested'][0] = {
-                    'id': 'generate',
+                    'id': getTmpNodeId(),
                     'name': 'new',
                     'parent_id': node['id'],
                     'is_deleted': false
                 }
-            } else {
-                alert('Сохраните и перезагрузите ноду, чтобы создать в ней новую')
             }
 
             document.getElementById('cache').replaceChild(
@@ -241,25 +249,47 @@
         cache_tree_marked_id = null;
     }
 
+    function isTmpNodeId(id) {
+        return id.toString().includes(prefix_tmp_id);
+    }
+
+    function getTmpNodeId() {
+        cache_tmp_id++;
+
+        return prefix_tmp_id + cache_tmp_id;
+    }
+
     function deleteNode() {
         if (!cache_tree_marked_id) {
             return;
         }
 
-        let path = findPathTo(cache_tree_marked_id, cache_tree);
-        if (false === path) {
-            alert('Прежде чем удалить ноду, её необходимо подгрузить');
-
-            return;
-        }
-        goto(path, function (node) {
-            node['is_deleted'] = true;
-            document.getElementById('cache')
-                .querySelector('[data-id="' + node['id'] + '"]')
-                .setAttribute('data-is_deleted', true);
-        });
+        deleteNested(cache_tree_marked_id, cache_tree);
 
         cache_tree_marked_id = null;
+    }
+
+    function deleteNested(id, tree) {
+        let path = findPathTo(id, tree);
+        if (false !== path) {
+            goto(path, function (node) {
+                node['is_deleted'] = true;
+                document.getElementById('cache')
+                    .querySelector('[data-id="' + node['id'] + '"]')
+                    .setAttribute('data-is_deleted', true);
+
+
+                if (typeof node['nested'] !== 'undefined') {
+                    for (let idx in Object.keys(node['nested'])){
+                        deleteNested(node['nested'][idx]['id'], tree);
+
+                        document.getElementById('cache')
+                            .querySelector('[data-id="' + node['nested'][idx]['id'] + '"]')
+                            .setAttribute('data-is_deleted', true);
+                    }
+                }
+            });
+        }
     }
 
     function getNode() {
@@ -326,21 +356,24 @@
                 return;
             }
             if (200 === req.status) {
-                //new nodes mark as saved
-                let new_nodes = document.getElementById('cache').querySelectorAll('[data-id="generate"]');
+                let response = JSON.parse(req.response);
+
+                let new_nodes = document.getElementById('cache').querySelectorAll('[data-id^="'+ prefix_tmp_id+'"]');
                 let node;
                 for (let i = 0; node = new_nodes[i]; i++) {
-                    node.setAttribute('data-id', 'saved');
-                    let path = findPathTo('generate', cache_tree);
+                    let tmp_id = node.getAttribute('data-id');
+                    node.setAttribute('data-id', response['created'][tmp_id]['id']);
+                    let path = findPathTo(tmp_id, cache_tree);
                     if (path !== false) {
                         goto(path, function (node) {
-                            node['id'] = 'saved';
+                            node['id'] = response['created'][tmp_id]['id'];
+                            node['parent_id'] = response['created'][tmp_id]['parent_id'];
                         })
                     }
                 }
 
                 document.getElementById('db').replaceChild(
-                    renderTree(JSON.parse(req.response), 'db'),
+                    renderTree(response['db_tree'], 'db'),
                     document.getElementById('db').firstChild
                 );
 

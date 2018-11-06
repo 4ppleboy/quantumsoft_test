@@ -5,10 +5,12 @@ namespace app;
 class DatabaseState
 {
     private $state;
+    private $created;
 
     public function __construct(array $state)
     {
         $this->state = $state;
+        $this->created = [];
     }
 
     public function get(): array
@@ -16,7 +18,7 @@ class DatabaseState
         return $this->state;
     }
 
-    public function findPathTo(int $id, array $haystack = null, array &$path = [])
+    public function findPathTo($id, array $haystack = null, array &$path = [])
     {
         if (null === $haystack) {
             $haystack =& $this->state;
@@ -73,30 +75,68 @@ class DatabaseState
     public function merge(array $updates): void
     {
         foreach ($updates as $value) {
-            if ($value['id'] === 'generate') {
+            if ($value['id'] === 'saved') {
+                continue;
+            }
+
+            //создание новых вложенных нод
+            if (false !== strpos($value['id'], 'generate')) {
                 $id = $this->getMaxId() + 1;
-                if (false !== $path = $this->findPathTo($value['parent_id'])) {
+
+                $parent_id = $value['parent_id'];
+                if (isset($this->created[$value['parent_id']]['id'])) {
+                    $parent_id = $this->created[$value['parent_id']]['id'];
+                }
+                $this->created[$value['id']] = ['id' => $id, 'parent_id' => $parent_id];
+
+                if (false !== $path = $this->findPathTo($parent_id)) {
                     $this->goto($path, function (&$node) use ($value, $id) {
                         $node['nested'][] = [
                             'id' => $id,
                             'name' => $value['name'],
                             'is_deleted' => $value['is_deleted'],
-                            'parent_id' => $value['parent_id'],
+                            'parent_id' => is_numeric($value['parent_id'])
+                                ? $value['parent_id']
+                                : $this->created[$value['parent_id']]['id'],
                         ];
                     });
+
+                    if (isset($value['nested']) && \is_array($value['nested'])) {
+                        $this->merge($value['nested']);
+                    }
                 }
-            } else if ($value['id'] === 'saved') {
-                continue;
+                //редактирование сущесвтующих нод
             } else if (false !== $path = $this->findPathTo($value['id'])) {
                 $this->goto($path, function (&$node) use ($value) {
-                    $node['name'] = $value['name'];
+                    if (!$value['is_deleted']) {
+                        $node['name'] = $value['name'];
+                    }
+
                     $node['is_deleted'] = $value['is_deleted'];
+                    if ($value['is_deleted']) {
+                        $this->deleteNested($value['id']);
+                    }
 
                     if (isset($value['nested']) && \is_array($value['nested'])) {
                         $this->merge($value['nested']);
                     }
                 });
             }
+        }
+    }
+
+    private function deleteNested($id)
+    {
+        if (false !== $path = $this->findPathTo($id)) {
+            $this->goto($path, function (&$node) {
+                $node['is_deleted'] = true;
+
+                if (isset($node['nested']) && \is_array($node['nested'])) {
+                    foreach ($node['nested'] as $item) {
+                        $this->deleteNested($item['id']);
+                    }
+                }
+            });
         }
     }
 
@@ -111,5 +151,10 @@ class DatabaseState
         sort($ids);
 
         return (int)array_pop($ids);
+    }
+
+    public function getCreated(): array
+    {
+        return $this->created;
     }
 }
