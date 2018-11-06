@@ -33,22 +33,55 @@ class Database
                                 'id' => 5,
                                 'name' => 'node4',
                                 'parent_id' => 3,
+                                'nested' => [
+                                    0 => [
+                                        'id' => 8,
+                                        'name' => 'node5',
+                                        'parent_id' => 5,
+                                        'nested' => [
+                                            0 => [
+                                                'id' => 10,
+                                                'name' => 'node6',
+                                                'parent_id' => 8,
+                                            ],
+                                        ]
+                                    ],
+                                    1 => [
+                                        'id' => 9,
+                                        'name' => 'node7',
+                                        'parent_id' => 5,
+                                    ]
+                                ]
                             ],
                             1 => [
                                 'id' => 6,
-                                'name' => 'node5',
+                                'name' => 'node8',
                                 'parent_id' => 3,
+                                'nested' => [
+                                    0 => [
+                                        'id' => 11,
+                                        'name' => 'node11',
+                                        'parent_id' => 6,
+                                        'nested' => [
+                                            0 => [
+                                                'id' => 12,
+                                                'name' => 'node12',
+                                                'parent_id' => 11,
+                                            ],
+                                        ]
+                                    ],
+                                ]
                             ]
                         ]
                     ],
                     2 => [
                         'id' => 4,
-                        'name' => 'node6',
+                        'name' => 'node9',
                         'parent_id' => 1,
                         'nested' => [
                             0 => [
                                 'id' => 7,
-                                'name' => 'node7',
+                                'name' => 'node10',
                                 'parent_id' => 4,
                             ]
                         ]
