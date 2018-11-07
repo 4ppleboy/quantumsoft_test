@@ -381,7 +381,6 @@
                         || typeof response['deleted'][deleted_id]['id'] === 'undefined') {
                         continue;
                     }
-                    node = response['deleted'][deleted_id]['id'];
                     document.getElementById('cache')
                         .querySelector('[data-id="' + response['deleted'][deleted_id]['id'] + '"]')
                         .setAttribute('data-is_deleted', true);
@@ -390,6 +389,28 @@
                     if (path !== false) {
                         goto(path, function (node) {
                             node['is_deleted'] = true;
+                        })
+                    }
+                }
+
+                for (let rejected_id in response['rejected']) {
+                    if (typeof response['rejected'][rejected_id] === 'undefined'
+                        || typeof response['rejected'][rejected_id]['id'] === 'undefined') {
+                        continue;
+                    }
+                    document.getElementById('cache')
+                        .querySelectorAll('[data-id="' + response['rejected'][rejected_id]['id'] + '"]')
+                        .forEach(e => e.parentNode.removeChild(e));
+
+                    let path = findPathTo(rejected_id, cache_tree);
+                    if (path !== false) {
+                        goto(path, function (node) {
+                            let path = findPathTo(node['parent_id'], cache_tree);
+                            if (path !== false) {
+                                goto(path, function (node) {
+                                    delete node['nested'];
+                                });
+                            }
                         })
                     }
                 }

@@ -55,7 +55,8 @@ class DatabaseRequest
         echo json_encode([
             'db_tree' => $state,
             'created' => $this->databaseState->getCreated(),
-            'deleted' => $this->databaseState->getDeleted($data['cache'])
+            'deleted' => $this->databaseState->getDeleted($data['cache']),
+            'rejected' => $this->databaseState->getRejected()
         ]);
     }
 

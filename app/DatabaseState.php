@@ -7,12 +7,14 @@ class DatabaseState
     private $state;
     private $created;
     private $deleted;
+    private $rejected;
 
     public function __construct(array $state)
     {
         $this->state = $state;
         $this->created = [];
         $this->deleted = [];
+        $this->rejected = [];
     }
 
     public function get(): array
@@ -97,6 +99,8 @@ class DatabaseState
                         }
 
                         if (isset($this->deleted[$parent_id])) {
+                            $this->rejected[$value['id']] = ['id' => $value['id']];
+
                             return;
                         }
 
@@ -184,5 +188,10 @@ class DatabaseState
         }
 
         return $this->deleted;
+    }
+
+    public function getRejected(): array
+    {
+        return $this->rejected;
     }
 }
