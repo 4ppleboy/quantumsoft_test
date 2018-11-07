@@ -104,6 +104,11 @@ class DatabaseState
                             return;
                         }
 
+                        if ($value['is_deleted']) {
+
+                            return;
+                        }
+
                         $node['nested'][] = [
                             'id' => $id,
                             'name' => $value['name'],
