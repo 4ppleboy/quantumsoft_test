@@ -18,8 +18,8 @@
             cursor: pointer;
         }
 
-        li[data-is_deleted='true'] {
-            background-color: red;
+        li[data-is_deleted='true'] > span {
+            color: red;
         }
 
         .border {
@@ -280,7 +280,7 @@
 
 
                 if (typeof node['nested'] !== 'undefined') {
-                    for (let idx in Object.keys(node['nested'])){
+                    for (let idx of Object.keys(node['nested'])){
                         deleteNested(node['nested'][idx]['id'], tree);
 
                         document.getElementById('cache')

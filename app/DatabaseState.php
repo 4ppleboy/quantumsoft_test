@@ -91,10 +91,14 @@ class DatabaseState
 
                 if (false !== $path = $this->findPathTo($parent_id)) {
                     $this->goto($path, function (&$node) use ($value, $id) {
+                        if ($value['is_deleted']) {
+                            $this->deleteNested($value['id'], $value['nested']);
+                        }
+
                         $node['nested'][] = [
                             'id' => $id,
                             'name' => $value['name'],
-                            'is_deleted' => $value['is_deleted'],
+                            'is_deleted' => !$node['is_deleted'] ? $value['is_deleted'] : true,
                             'parent_id' => is_numeric($value['parent_id'])
                                 ? $value['parent_id']
                                 : $this->created[$value['parent_id']]['id'],
@@ -111,8 +115,9 @@ class DatabaseState
                     if (!$value['is_deleted']) {
                         $node['name'] = $value['name'];
                     }
-
-                    $node['is_deleted'] = $value['is_deleted'];
+                    if (!$node['is_deleted']) {
+                        $node['is_deleted'] = $value['is_deleted'];
+                    }
                     if ($value['is_deleted']) {
                         $this->deleteNested($value['id']);
                     }
@@ -125,14 +130,18 @@ class DatabaseState
         }
     }
 
-    private function deleteNested($id)
+    private function deleteNested($id, $nested = null)
     {
         if (false !== $path = $this->findPathTo($id)) {
-            $this->goto($path, function (&$node) {
+            $this->goto($path, function (&$node) use ($nested) {
+                if (null === $nested && isset($node['nested'])) {
+                    $nested = $node['nested'];
+                }
+
                 $node['is_deleted'] = true;
 
-                if (isset($node['nested']) && \is_array($node['nested'])) {
-                    foreach ($node['nested'] as $item) {
+                if (\is_array($nested)) {
+                    foreach ($nested as $item) {
                         $this->deleteNested($item['id']);
                     }
                 }
