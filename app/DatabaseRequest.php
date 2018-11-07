@@ -52,7 +52,11 @@ class DatabaseRequest
         $this->database->apply($state);
 
         http_response_code(200);
-        echo json_encode(['db_tree' => $state, 'created' => $this->databaseState->getCreated()]);
+        echo json_encode([
+            'db_tree' => $state,
+            'created' => $this->databaseState->getCreated(),
+            'deleted' => $this->databaseState->getDeleted($data['cache'])
+        ]);
     }
 
     public function fallback(): void

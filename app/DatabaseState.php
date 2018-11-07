@@ -6,11 +6,13 @@ class DatabaseState
 {
     private $state;
     private $created;
+    private $deleted;
 
     public function __construct(array $state)
     {
         $this->state = $state;
         $this->created = [];
+        $this->deleted = [];
     }
 
     public function get(): array
@@ -32,7 +34,7 @@ class DatabaseState
                 }
 
                 array_pop($path);
-            } elseif ($value === $id) {
+            } elseif ($key === 'id' && $value === $id) {
                 return true;
             }
         }
@@ -87,12 +89,15 @@ class DatabaseState
                 if (isset($this->created[$value['parent_id']]['id'])) {
                     $parent_id = $this->created[$value['parent_id']]['id'];
                 }
-                $this->created[$value['id']] = ['id' => $id, 'parent_id' => $parent_id];
 
                 if (false !== $path = $this->findPathTo($parent_id)) {
-                    $this->goto($path, function (&$node) use ($value, $id) {
+                    $this->goto($path, function (&$node) use ($value, $id, $parent_id) {
                         if ($value['is_deleted']) {
                             $this->deleteNested($value['id'], $value['nested']);
+                        }
+
+                        if (isset($this->deleted[$parent_id])) {
+                            return;
                         }
 
                         $node['nested'][] = [
@@ -103,6 +108,7 @@ class DatabaseState
                                 ? $value['parent_id']
                                 : $this->created[$value['parent_id']]['id'],
                         ];
+                        $this->created[$value['id']] = ['id' => $id, 'parent_id' => $parent_id];
                     });
 
                     if (isset($value['nested']) && \is_array($value['nested'])) {
@@ -139,9 +145,11 @@ class DatabaseState
                 }
 
                 $node['is_deleted'] = true;
+                $this->deleted[$node['id']] = ['id' => $node['id']];
 
                 if (\is_array($nested)) {
                     foreach ($nested as $item) {
+                        $this->deleted[$item['id']] = ['id' => $item['id']];
                         $this->deleteNested($item['id']);
                     }
                 }
@@ -165,5 +173,16 @@ class DatabaseState
     public function getCreated(): array
     {
         return $this->created;
+    }
+
+    public function getDeleted(array $cache_tree): array
+    {
+        foreach ($this->deleted as $item) {
+            if (false === $this->findPathTo($item['id'], $cache_tree)) {
+                unset($this->deleted[$item['id']]);
+            }
+        }
+
+        return $this->deleted;
     }
 }

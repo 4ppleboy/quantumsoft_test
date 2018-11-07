@@ -230,7 +230,7 @@
                 delete clone_node['nested'];
 
                 node['nested'][newIndex] = clone_node;
-            } else{
+            } else {
                 node['nested'] = {0: null};
                 node['nested'][0] = {
                     'id': getTmpNodeId(),
@@ -280,7 +280,7 @@
 
 
                 if (typeof node['nested'] !== 'undefined') {
-                    for (let idx of Object.keys(node['nested'])){
+                    for (let idx of Object.keys(node['nested'])) {
                         deleteNested(node['nested'][idx]['id'], tree);
 
                         document.getElementById('cache')
@@ -358,16 +358,38 @@
             if (200 === req.status) {
                 let response = JSON.parse(req.response);
 
-                let new_nodes = document.getElementById('cache').querySelectorAll('[data-id^="'+ prefix_tmp_id+'"]');
+                let new_nodes = document.getElementById('cache').querySelectorAll('[data-id^="' + prefix_tmp_id + '"]');
                 let node;
                 for (let i = 0; node = new_nodes[i]; i++) {
                     let tmp_id = node.getAttribute('data-id');
+                    if (typeof response['created'][tmp_id] === 'undefined'
+                        || typeof response['created'][tmp_id]['id'] === 'undefined') {
+                        continue;
+                    }
                     node.setAttribute('data-id', response['created'][tmp_id]['id']);
                     let path = findPathTo(tmp_id, cache_tree);
                     if (path !== false) {
                         goto(path, function (node) {
                             node['id'] = response['created'][tmp_id]['id'];
                             node['parent_id'] = response['created'][tmp_id]['parent_id'];
+                        })
+                    }
+                }
+
+                for (let deleted_id in response['deleted']) {
+                    if (typeof response['deleted'][deleted_id] === 'undefined'
+                        || typeof response['deleted'][deleted_id]['id'] === 'undefined') {
+                        continue;
+                    }
+                    node = response['deleted'][deleted_id]['id'];
+                    document.getElementById('cache')
+                        .querySelector('[data-id="' + response['deleted'][deleted_id]['id'] + '"]')
+                        .setAttribute('data-is_deleted', true);
+
+                    let path = findPathTo(deleted_id, cache_tree);
+                    if (path !== false) {
+                        goto(path, function (node) {
+                            node['is_deleted'] = true;
                         })
                     }
                 }
