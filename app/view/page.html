@@ -220,24 +220,26 @@
             }
 
             if (typeof node['nested'] !== 'undefined') {
+                let tmpId = getTmpNodeId();
                 let firstKey = Object.keys(node['nested'])[0];
-                let newIndex = parseInt(Object.keys(node['nested']).pop()) + 1;
 
                 let clone_node = JSON.parse(JSON.stringify(node['nested'][firstKey]));
                 clone_node['name'] = 'new';
-                clone_node['id'] = getTmpNodeId();
+                clone_node['id'] = tmpId;
                 clone_node['is_deleted'] = false;
                 delete clone_node['nested'];
 
-                node['nested'][newIndex] = clone_node;
+                node['nested'][tmpId] = clone_node;
             } else {
-                node['nested'] = {0: null};
-                node['nested'][0] = {
-                    'id': getTmpNodeId(),
+                let tmpId = getTmpNodeId();
+                node['nested'] = {};
+                node['nested'][tmpId] = {
+                    'id': tmpId,
                     'name': 'new',
                     'parent_id': node['id'],
                     'is_deleted': false
-                }
+                };
+                console.log(node);
             }
 
             document.getElementById('cache').replaceChild(
@@ -408,7 +410,7 @@
                             let path = findPathTo(node['parent_id'], cache_tree);
                             if (path !== false) {
                                 goto(path, function (node) {
-                                    delete node['nested'];
+                                    delete node['nested'][rejected_id];
                                 });
                             }
                         })
