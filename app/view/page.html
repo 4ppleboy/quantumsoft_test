@@ -113,14 +113,10 @@
         let new_tree = {};
         for (let i in cache_index) {
             let path = findPathTo(cache_index[i]['id'], tree);
-            if (null !== path) {
-                let node = null;
-                goto(path, function (item) {
-                    node = item;
-                });
-                if (null !== node) {
+            if (false !== path) {
+                goto(path, function (node) {
                     updateTree(new_tree, node);
-                }
+                });
             }
         }
 
@@ -130,12 +126,20 @@
     function updateTree(tree, node) {
         let path = findPathTo(node['parent_id'], tree);
         if (false !== path) {
-            goto(path, function (item) {
-                if (typeof item['nested'] === 'undefined') {
-                    item['nested'] = {};
-                    item['nested'][node['id']] = node;
-                } else if (item['nested'] !== 'undefined' && typeof item['nested'][node['id']] === 'undefined') {
-                    item['nested'][node['id']] = node;
+            goto(path, function (parent) {
+                if (typeof parent['nested'] === 'undefined') {
+                    parent['nested'] = {};
+                    if (parent['is_deleted']) {
+                        node['is_deleted'] = true;
+                    }
+
+                    updateTree(parent['nested'], node);
+                } else if (parent['nested'] !== 'undefined') {
+                    if (parent['is_deleted']) {
+                        node['is_deleted'] = true;
+                    }
+
+                    updateTree(parent['nested'], node);
                 }
             });
         } else {
@@ -186,7 +190,7 @@
 
     function findPathTo(id, haystack, path = []) {
         for (let index in haystack) {
-            if (typeof haystack[index] === 'object' || typeof haystack[index] === 'array') {
+            if (typeof haystack[index] === 'object') {
                 path.push(index);
                 if (findPathTo(id, haystack[index], path)) {
                     return path;
@@ -239,7 +243,6 @@
                     'parent_id': node['id'],
                     'is_deleted': false
                 };
-                console.log(node);
             }
 
             document.getElementById('cache').replaceChild(
